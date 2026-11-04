@@ -1,0 +1,33 @@
+name: measure-v25
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  measure:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show runner and docker
+        run: |
+          uname -m
+          docker version
+      - name: Run organisers reproduce script
+        run: |
+          set +e
+          bash measure/reproduce_lanes.sh . 2>&1 | tee measure-run.log
+          echo "REPRODUCE_EXIT=${PIPESTATUS[0]}" | tee -a measure-run.log
+          mkdir -p measure-results
+          for d in /tmp/side-kernel.*; do
+            if [ -d "$d/results" ]; then cp -r "$d/results/." measure-results/; fi
+          done
+          ls -la measure-results || true
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v25-measure-results
+          path: |
+            measure-run.log
+            measure-results/
